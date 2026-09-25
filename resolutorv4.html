@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Módulo Interactivo: Generador y Evaluador de Ejercicios de Álgebra</title>
+  
+  <!-- Pyodide (Python en WASM) -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+  
+  <!-- KaTeX -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #f8fafc;
+      --card-bg: #ffffff;
+      --subcard-bg: #f1f5f9;
+      --accent-blue: #4f46e5;
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --accent-yellow: #d97706;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #cbd5e1;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+      position: relative;
+    }
+
+    /* Marca de agua invisible */
+    .invisible-watermark {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+      opacity: 0;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .app-card {
+      background: var(--card-bg);
+      width: 100%;
+      max-width: 750px;
+      border-radius: 16px;
+      padding: 30px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+      border: 1px solid var(--border-color);
+      position: relative;
+    }
+
+    header {
+      margin-bottom: 25px;
+      text-align: center;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 15px;
+    }
+
+    header h1 {
+      font-size: 1.8rem;
+      color: var(--accent-blue);
+      margin-bottom: 8px;
+    }
+
+    header p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: #fef3c7;
+      color: var(--accent-yellow);
+      border: 1px solid #f59e0b;
+      margin-top: 10px;
+    }
+
+    .status-badge.ready {
+      background: #d1fae5;
+      color: #047857;
+      border-color: #10b981;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    select {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: var(--card-bg);
+      color: var(--text-main);
+      font-size: 0.95rem;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      background-color: var(--accent-blue);
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+    }
+
+    button:hover:not(:disabled) {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    button:disabled {
+      background: var(--border-color);
+      color: var(--text-muted);
+      cursor: not-allowed;
+    }
+
+    .exercise-box {
+      background-color: var(--subcard-bg);
+      padding: 25px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      border-left: 5px solid var(--accent-blue);
+      color: var(--text-main);
+      position: relative;
+      min-height: 200px;
+    }
+
+    .exercise-prompt {
+      font-weight: 600;
+      margin-bottom: 15px;
+      color: var(--text-main);
+    }
+
+    .math-display {
+      font-size: 1.4rem;
+      margin: 15px 0;
+      text-align: center;
+      min-height: 45px;
+    }
+
+    .input-section {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .input-section input {
+      flex: 1;
+      padding: 12px 15px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      background: #ffffff;
+      color: var(--text-main);
+      font-size: 1rem;
+      outline: none;
+    }
+
+    /* Estilos del Skeleton Loader */
+    .skeleton-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--subcard-bg);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      padding: 25px;
+      z-index: 10;
+      transition: opacity 0.3s ease;
+    }
+
+    .skeleton-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+      display: none;
+    }
+
+    .skeleton-line {
+      height: 20px;
+      background: linear-gradient(90deg, #e2e8f0 25%, #cbd5e1 50%, #e2e8f0 75%);
+      background-size: 200% 100%;
+      border-radius: 6px;
+      animation: skeleton-shimmer 1.5s infinite;
+    }
+
+    .skeleton-line.short { width: 40%; }
+    .skeleton-line.medium { width: 70%; }
+    .skeleton-line.large { width: 100%; height: 40px; }
+
+    @keyframes skeleton-shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .shortcut-hints {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 6px;
+      text-align: right;
+    }
+
+    /* Retroalimentación */
+    .feedback-box {
+      padding: 18px 22px;
+      border-radius: 12px;
+      margin-top: 18px;
+      display: none;
+      font-size: 1.05rem;
+      line-height: 1.5;
+      animation: popIn 0.3s ease-out, vibrate 0.2s ease-in-out;
+    }
+
+    .feedback-box.correct {
+      display: block;
+      background: #d1fae5;
+      border: 2px solid var(--accent-green);
+      color: #065f46;
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+    }
+
+    .feedback-box.incorrect {
+      display: block !important;
+      background: #fee2e2;
+      border: 2px solid var(--accent-red);
+      color: #991b1b;
+      box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
+    }
+
+    .hint-box {
+      margin-top: 12px;
+      padding: 12px 15px;
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-left: 5px solid #d97706;
+      color: #92400e;
+      font-size: 0.95rem;
+      border-radius: 8px;
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.95); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes vibrate {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-4px); }
+      50% { transform: translateX(4px); }
+      75% { transform: translateX(-4px); }
+      100% { transform: translateX(0); }
+    }
+
+    .stats-bar {
+      display: flex;
+      justify-content: space-between;
+      background-color: var(--subcard-bg);
+      color: var(--text-muted);
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+    }
+
+    .stats-bar span strong {
+      color: var(--accent-blue);
+    }
+  </style>
+</head>
+<body class="style2">
+
+  <!-- Marca de agua invisible -->
+  <!-- Creado por Carlos Abraham Olivera Mendiola -->
+  <div class="invisible-watermark" aria-hidden="true">Creado por Carlos Abraham Olivera Mendiola</div>
+
+  <div class="app-card">
+    <header>
+      <h1 class="card-title">Evaluador & Generador de Ejercicios</h1>
+      <p class="subtext">Álgebra Interactiva 100% Ejecutada en WebAssembly (SymPy)</p>
+      <div id="status" class="status-badge badge-style">⚡ Cargando entorno Python en el navegador...</div>
+    </header>
+
+    <div class="controls-grid">
+      <div>
+        <label for="topic" class="subtext">Tema</label>
+        <select id="topic" disabled>
+          <option value="lineal">Ecuaciones Lineales</option>
+          <option value="cuadratica">Ecuaciones Cuadráticas</option>
+        </select>
+      </div>
+      <div>
+        <label for="difficulty" class="subtext">Dificultad</label>
+        <select id="difficulty" disabled>
+          <option value="facil">Fácil (Enteros Directos)</option>
+          <option value="intermedio" selected>Intermedio (Despejes / Fracciones)</option>
+        </select>
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button id="btn-generate" class="btn-style" onclick="generarEjercicio()" disabled>🎲 Nuevo [N]</button>
+      </div>
+    </div>
+
+    <div class="exercise-box box-style">
+      <!-- Skeleton Loader -->
+      <div id="skeleton-loader" class="skeleton-overlay">
+        <div class="skeleton-line medium"></div>
+        <div class="skeleton-line short" style="margin: 0 auto;"></div>
+        <div class="skeleton-line large" style="margin-top: 15px;"></div>
+      </div>
+
+      <div class="exercise-prompt" id="prompt-text">Cargando módulos interactivos...</div>
+      <div class="math-display" id="math-problem">--</div>
+
+      <div class="input-section">
+        <input type="text" id="user-answer" placeholder="Ej: 3, -1/2 o 2, -3" disabled>
+        <button id="btn-eval" class="btn-style" onclick="evaluarRespuesta()" style="width: auto; min-width: 120px;" disabled>Evaluar [Enter]</button>
+      </div>
+
+      <div class="shortcut-hints">Atajos: <strong>[Enter]</strong> Evaluar | <strong>[N]</strong> o <strong>[Espacio]</strong> Nuevo ejercicio</div>
+
+      <div class="feedback-box" id="feedback"></div>
+    </div>
+
+    <div class="stats-bar stats-style">
+      <span>Completados: <strong id="stat-total">0</strong></span>
+      <span>Vidas: <strong id="stat-lives">❤️ ❤️ ❤️</strong></span>
+      <span>Racha: <strong id="stat-streak">0 🔥</strong></span>
+    </div>
+  </div>
+
+  <script>
+    let pyodide;
+    let currentProblem = null;
+    let maxLives = 3;
+    let stats = { total: 0, correct: 0, streak: 0, lives: maxLives };
+    let isReady = false;
+
+    async function initPyodide() {
+      try {
+        pyodide = await loadPyodide();
+        await pyodide.loadPackage("sympy");
+
+        await pyodide.runPythonAsync(`
+import random
+from sympy import symbols, Eq, solve, sympify, latex, simplify
+
+x = symbols('x')
+
+def gen_linear(level):
+    if level == "facil":
+        a = random.choice([i for i in range(-5, 6) if i != 0])
+        target_x = random.randint(-8, 8)
+        b = random.randint(-10, 10)
+        c = a * target_x + b
+        eq = Eq(a*x + b, c)
+        hint = f"Pista: Resta {b} de ambos lados y luego divide entre {a}." if b >= 0 else f"Pista: Suma {abs(b)} a ambos lados y divide entre {a}."
+    else:
+        a = random.choice([i for i in range(-6, 7) if i != 0])
+        c = random.choice([i for i in range(-6, 7) if i != a])
+        b = random.randint(-12, 12)
+        d = random.randint(-12, 12)
+        eq = Eq(a*x + b, c*x + d)
+        hint = f"Pista: Agrupa las x a un lado restando ({c}x): ({a-c})x = {d-b}."
+        
+    sol = solve(eq, x)
+    return {
+        "prompt": "Resuelve la ecuación lineal para x (puedes responder en entero o fracción ej: 3 o -1/2):",
+        "latex_prob": latex(eq),
+        "target": str(sol[0]),
+        "hint": hint,
+        "type": "equation"
+    }
+
+def gen_quadratic(level):
+    if level == "facil":
+        r1 = random.randint(-5, 5)
+        r2 = random.randint(-5, 5)
+        expr = (x - r1) * (x - r2)
+        hint = f"Pista: Busca dos números que multiplicados den {r1*r2} y sumados den {-(r1+r2)}."
+    else:
+        r1 = random.randint(-6, 6)
+        r2 = random.randint(-6, 6)
+        a = random.choice([1, 1, 2, -1])
+        expr = a * (x - r1) * (x - r2)
+        hint = f"Pista: Puedes usar la fórmula general cuadrática con A={a}, B={-a*(r1+r2)}, C={a*r1*r2}."
+        
+    eq = Eq(expr.expand(), 0)
+    sol = solve(eq, x)
+    
+    return {
+        "prompt": "Encuentra las soluciones de la ecuación cuadrática (ingresa las raíces separadas por coma, ej: 2, -3):",
+        "latex_prob": latex(eq),
+        "target": ", ".join(str(s) for s in sol),
+        "hint": hint,
+        "type": "roots"
+    }
+
+def check_answer(user_input, target_str, p_type):
+    try:
+        if p_type == "roots":
+            u_roots = sorted([sympify(r.strip()) for r in user_input.split(",") if r.strip()])
+            t_roots = sorted([sympify(r.strip()) for r in target_str.split(",") if r.strip()])
+            
+            if len(u_roots) != len(t_roots):
+                return {"correct": False}
+                
+            is_correct = all(simplify(u - t) == 0 for u, t in zip(u_roots, t_roots))
+        else:
+            u_expr = sympify(user_input)
+            t_expr = sympify(target_str)
+            is_correct = simplify(u_expr - t_expr) == 0
+            
+        return {"correct": is_correct}
+    except Exception as e:
+        return {"correct": False, "error": str(e)}
+        `);
+
+        const statusEl = document.getElementById("status");
+        statusEl.innerText = "✅ Python (SymPy) listo en el navegador";
+        statusEl.classList.add("ready");
+
+        document.getElementById("topic").disabled = false;
+        document.getElementById("difficulty").disabled = false;
+        document.getElementById("btn-generate").disabled = false;
+        document.getElementById("user-answer").disabled = false;
+        document.getElementById("btn-eval").disabled = false;
+
+        // Ocultar Skeleton Loader
+        document.getElementById("skeleton-loader").classList.add("hidden");
+
+        isReady = true;
+        actualizarVidasUI();
+        generarEjercicio();
+
+      } catch (err) {
+        document.getElementById("status").innerText = "❌ Error al cargar WebAssembly";
+        console.error(err);
+      }
+    }
+
+    function actualizarVidasUI() {
+      let hearts = "";
+      for (let i = 0; i < stats.lives; i++) {
+        hearts += "❤️ ";
+      }
+      if (stats.lives === 0) hearts = "💀 Sin vidas";
+      document.getElementById("stat-lives").innerText = hearts;
+    }
+
+    async function generarEjercicio() {
+      if (!isReady) return;
+
+      const topic = document.getElementById("topic").value;
+      const difficulty = document.getElementById("difficulty").value;
+      const feedbackEl = document.getElementById("feedback");
+      
+      feedbackEl.className = "feedback-box";
+      feedbackEl.style.display = "none";
+      document.getElementById("user-answer").value = "";
+
+      let pyFunc = `gen_linear("${difficulty}")`;
+      if (topic === "cuadratica") pyFunc = `gen_quadratic("${difficulty}")`;
+
+      let res = await pyodide.runPythonAsync(pyFunc);
+      currentProblem = res.toJs();
+
+      document.getElementById("prompt-text").innerText = currentProblem.get("prompt");
+      
+      const latexProb = currentProblem.get("latex_prob");
+      const mathDisplay = document.getElementById("math-problem");
+      katex.render(latexProb, mathDisplay, { displayMode: true, throwOnError: false });
+    }
+
+    async function evaluarRespuesta() {
+      if (!isReady) return;
+
+      const uInput = document.getElementById("user-answer").value.trim();
+      if (!uInput) return;
+
+      const targetStr = currentProblem.get("target");
+      const pType = currentProblem.get("type");
+      const hintStr = currentProblem.get("hint");
+
+      pyodide.globals.set("temp_uinput", uInput);
+      pyodide.globals.set("temp_target", targetStr);
+      pyodide.globals.set("temp_ptype", pType);
+
+      let pyRes = await pyodide.runPythonAsync(`check_answer(temp_uinput, temp_target, temp_ptype)`);
+      let evalResult = pyRes.toJs();
+
+      const feedbackEl = document.getElementById("feedback");
+
+      feedbackEl.style.animation = 'none';
+      feedbackEl.offsetHeight; 
+      feedbackEl.style.animation = null;
+
+      if (evalResult.get("correct")) {
+        stats.total++;
+        stats.correct++;
+        stats.streak++;
+        stats.lives = maxLives;
+        actualizarVidasUI();
+
+        feedbackEl.className = "feedback-box correct";
+        feedbackEl.innerHTML = `<strong>🎉 ¡Respuesta Correcta! Excelente trabajo.</strong> Cargando el siguiente ejercicio...`;
+        
+        document.getElementById("stat-total").innerText = stats.total;
+        document.getElementById("stat-streak").innerText = stats.streak + " 🔥";
+
+        setTimeout(() => {
+          generarEjercicio();
+        }, 1200);
+
+      } else {
+        stats.lives--;
+        actualizarVidasUI();
+
+        if (stats.lives > 0) {
+          feedbackEl.className = "feedback-box incorrect";
+          let htmlFeedback = `<strong>¡Uff, por muy poco! 😅 Casi lo tienes, ¡inténtalo de nuevo!</strong><br>Te quedan <strong>${stats.lives}</strong> vida(s).`;
+          
+          if (stats.lives === 1 && hintStr) {
+            htmlFeedback += `<div class="hint-box">💡 <strong>Pista disponible:</strong> ${hintStr}</div>`;
+          }
+
+          feedbackEl.innerHTML = htmlFeedback;
+        } else {
+          stats.streak = 0;
+          stats.lives = maxLives;
+          actualizarVidasUI();
+          feedbackEl.className = "feedback-box incorrect";
+          feedbackEl.innerHTML = `<strong>💪 ¡No te rindas! Perdiste tus vidas, pero cada error te acerca a dominarlo.</strong><br>La respuesta correcta era <code>${targetStr}</code>. ¡Reintentemos con un nuevo problema!`;
+          document.getElementById("stat-streak").innerText = stats.streak + " 🔥";
+          
+          setTimeout(() => {
+            generarEjercicio();
+          }, 2800);
+        }
+      }
+    }
+
+    // Atajos de teclado (Enter, N, Espacio)
+    document.addEventListener("keydown", function(event) {
+      if (!isReady) return;
+
+      const activeElement = document.activeElement;
+      const isInputFocused = activeElement && activeElement.tagName === "INPUT";
+
+      if (event.key === "Enter") {
+        evaluarRespuesta();
+      } else if (!isInputFocused && (event.key.toLowerCase() === "n" || event.key === " ")) {
+        event.preventDefault();
+        generarEjercicio();
+      }
+    });
+
+    initPyodide();
+  </script>
+</body>
+</html>
