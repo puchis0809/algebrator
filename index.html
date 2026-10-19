@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -42,20 +43,10 @@
       position: relative;
     }
 
-    /* Marca de agua invisible */
     .invisible-watermark {
       position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-      opacity: 0;
-      pointer-events: none;
-      user-select: none;
+      width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; opacity: 0; pointer-events: none; user-select: none;
     }
 
     .app-card {
@@ -199,27 +190,18 @@
       outline: none;
     }
 
-    /* Estilos del Skeleton Loader */
     .skeleton-overlay {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0; width: 100%; height: 100%;
       background: var(--subcard-bg);
       border-radius: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-      padding: 25px;
-      z-index: 10;
+      display: flex; flex-direction: column; gap: 15px;
+      padding: 25px; z-index: 10;
       transition: opacity 0.3s ease;
     }
 
     .skeleton-overlay.hidden {
-      opacity: 0;
-      pointer-events: none;
-      display: none;
+      opacity: 0; pointer-events: none; display: none;
     }
 
     .skeleton-line {
@@ -246,7 +228,6 @@
       text-align: right;
     }
 
-    /* Retroalimentación */
     .feedback-box {
       padding: 18px 22px;
       border-radius: 12px;
@@ -258,7 +239,7 @@
     }
 
     .feedback-box.correct {
-      display: block;
+      display: block !important;
       background: #d1fae5;
       border: 2px solid var(--accent-green);
       color: #065f46;
@@ -314,8 +295,6 @@
 </head>
 <body class="style2">
 
-  <!-- Marca de agua invisible -->
-  <!-- Creado por Carlos Abraham Olivera Mendiola -->
   <div class="invisible-watermark" aria-hidden="true">Creado por Carlos Abraham Olivera Mendiola</div>
 
   <div class="app-card">
@@ -347,7 +326,6 @@
     </div>
 
     <div class="exercise-box box-style">
-      <!-- Skeleton Loader -->
       <div id="skeleton-loader" class="skeleton-overlay">
         <div class="skeleton-line medium"></div>
         <div class="skeleton-line short" style="margin: 0 auto;"></div>
@@ -471,7 +449,6 @@ def check_answer(user_input, target_str, p_type):
         document.getElementById("user-answer").disabled = false;
         document.getElementById("btn-eval").disabled = false;
 
-        // Ocultar Skeleton Loader
         document.getElementById("skeleton-loader").classList.add("hidden");
 
         isReady = true;
@@ -548,14 +525,23 @@ def check_answer(user_input, target_str, p_type):
         actualizarVidasUI();
 
         feedbackEl.className = "feedback-box correct";
-        feedbackEl.innerHTML = `<strong>🎉 ¡Respuesta Correcta! Excelente trabajo.</strong> Cargando el siguiente ejercicio...`;
+        
+        let mensajesBuenTrabajo = [
+          "¡Excelente trabajo! Lo resolviste a la perfección. ",
+          "¡Buen trabajo! Vas por un excelente camino. ",
+          "¡Correcto! Tienes gran talento para esto. ",
+          "¡Impresionante! Sigue así con esa racha. "
+        ];
+        let mensajeAleatorio = mensajesBuenTrabajo[Math.floor(Math.random() * mensajesBuenTrabajo.length)];
+
+        feedbackEl.innerHTML = `<strong>🎉 ¡Muy bien hecho!</strong><br>${mensajeAleatorio}<br><small style="color: #047857;">Cargando el siguiente ejercicio...</small>`;
         
         document.getElementById("stat-total").innerText = stats.total;
         document.getElementById("stat-streak").innerText = stats.streak + " 🔥";
 
         setTimeout(() => {
           generarEjercicio();
-        }, 1200);
+        }, 1500);
 
       } else {
         stats.lives--;
@@ -563,7 +549,7 @@ def check_answer(user_input, target_str, p_type):
 
         if (stats.lives > 0) {
           feedbackEl.className = "feedback-box incorrect";
-          let htmlFeedback = `<strong>¡Uff, por muy poco! 😅 Casi lo tienes, ¡inténtalo de nuevo!</strong><br>Te quedan <strong>${stats.lives}</strong> vida(s).`;
+          let htmlFeedback = `<strong>¡Uff, por muy poco!  Casi lo tienes, ¡inténtalo de nuevo!</strong><br>Te quedan <strong>${stats.lives}</strong> vida(s).`;
           
           if (stats.lives === 1 && hintStr) {
             htmlFeedback += `<div class="hint-box">💡 <strong>Pista disponible:</strong> ${hintStr}</div>`;
@@ -575,7 +561,7 @@ def check_answer(user_input, target_str, p_type):
           stats.lives = maxLives;
           actualizarVidasUI();
           feedbackEl.className = "feedback-box incorrect";
-          feedbackEl.innerHTML = `<strong>💪 ¡No te rindas! Perdiste tus vidas, pero cada error te acerca a dominarlo.</strong><br>La respuesta correcta era <code>${targetStr}</code>. ¡Reintentemos con un nuevo problema!`;
+          feedbackEl.innerHTML = `<strong> ¡No te rindas! Perdiste tus vidas, pero cada error te acerca a dominarlo.</strong><br>La respuesta correcta era <code>${targetStr}</code>. ¡Reintentemos con un nuevo problema!`;
           document.getElementById("stat-streak").innerText = stats.streak + " 🔥";
           
           setTimeout(() => {
@@ -585,7 +571,6 @@ def check_answer(user_input, target_str, p_type):
       }
     }
 
-    // Atajos de teclado (Enter, N, Espacio)
     document.addEventListener("keydown", function(event) {
       if (!isReady) return;
 
